@@ -13,6 +13,12 @@ class SQLiteWrapper:
         self.connection = None
 
     def get_tables_info(self):
+        """
+        Obtiene información sobre las tablas de la base de datos, incluyendo nombre, número de filas, número de columnas y lista de columnas.
+
+        Returns:
+            pd.DataFrame: DataFrame con la información de las tablas.
+        """
         # Obtener el listado de tablas
         tables_df = self.get_query_df("SELECT name FROM sqlite_master WHERE type='table';")
 
@@ -24,21 +30,25 @@ class SQLiteWrapper:
 
         # Iterar sobre las tablas y recopilar información
         for table_name in tables_df['name']:
-            # Contar filas en la tabla
-            row_count_query = f"SELECT COUNT(*) AS row_count FROM {table_name};"
-            row_count = self.get_query_df(row_count_query)['row_count'].iloc[0]
-            
-            # Obtener información de las columnas
-            pragma_query = f"PRAGMA table_info('{table_name}');"
-            columns_info = self.get_query_df(pragma_query)
-            columns = columns_info['name'].tolist()
-            column_count = len(columns)
-            
-            # Almacenar resultados
-            table_names.append(table_name)
-            row_counts.append(row_count)
-            column_counts.append(column_count)
-            column_lists.append(columns)
+            try:
+                # Contar filas en la tabla
+                row_count_query = f"SELECT COUNT(*) AS row_count FROM {table_name};"
+                row_count = self.get_query_df(row_count_query)['row_count'].iloc[0]
+
+                # Obtener información de las columnas
+                pragma_query = f"PRAGMA table_info('{table_name}');"
+                columns_info = self.get_query_df(pragma_query)
+                columns = columns_info['name'].tolist()
+                column_count = len(columns)
+
+                # Almacenar resultados
+                table_names.append(table_name)
+                row_counts.append(row_count)
+                column_counts.append(column_count)
+                column_lists.append(columns)
+
+            except Exception as e:
+                print(f"Error procesando la tabla {table_name}: {e}")
 
         # Crear el DataFrame con la información recopilada
         result_df = pd.DataFrame({
@@ -46,14 +56,14 @@ class SQLiteWrapper:
             "num_filas": row_counts,
             "num_cols": column_counts,
             "col_names": column_lists
-        })\
-            .loc[lambda x: x.num_filas > 0]
+        })
         return result_df
 
     def connect(self):
         """Establece una conexión con la base de datos."""
         if self.connection is None:
             self.connection = sqlite3.connect(self.db_path)
+            self.connection.text_factory = lambda b: b.decode(errors='ignore')  # Ignorar errores de decodificación
         else:
             print("Ya existe una conexión activa.")
 
@@ -70,9 +80,13 @@ class SQLiteWrapper:
         """
         if self.connection is None:
             raise ValueError("Conexión no establecida. Llama a `connect()` primero.")
-        
-        # Ejecutar la consulta y devolver un DataFrame
-        return pd.read_sql_query(query, self.connection, params=params)
+
+        try:
+            # Ejecutar la consulta y devolver un DataFrame
+            return pd.read_sql_query(query, self.connection, params=params)
+        except Exception as e:
+            print(f"Error ejecutando la consulta: {e}")
+            raise
 
     def execute_non_query(self, query, params=None):
         """
@@ -85,10 +99,14 @@ class SQLiteWrapper:
         if self.connection is None:
             raise ValueError("Conexión no establecida. Llama a `connect()` primero.")
 
-        with self.connection as conn:
-            cursor = conn.cursor()
-            cursor.execute(query, params or ())
-            conn.commit()
+        try:
+            with self.connection as conn:
+                cursor = conn.cursor()
+                cursor.execute(query, params or ())
+                conn.commit()
+        except Exception as e:
+            print(f"Error ejecutando la consulta no retornable: {e}")
+            raise
 
     def close(self):
         """Cierra la conexión con la base de datos."""
