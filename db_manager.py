@@ -107,7 +107,7 @@ class SQLiteWrapper:
             "num_cols": column_counts,
             "col_names": column_lists
         })
-        return result_df
+        return result_df.sort_values("num_filas", ascending = False)
 
     def get_annotations(self):
 
