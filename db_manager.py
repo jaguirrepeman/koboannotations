@@ -117,6 +117,7 @@ class SQLiteWrapper:
                 l.Title as Título, 
                 c.Title as Capítulo, 
                 b.ChapterProgress as `Progreso del libro`, 
+                b.StartContainerPath,
                 b.Text as Texto, 
                 CASE 
                     WHEN b.Annotation IS NULL OR b.Annotation = '' THEN '' 
@@ -137,8 +138,17 @@ class SQLiteWrapper:
             ) l ON b.VolumeID = l.VolumeID
             WHERE b.Type IN ("highlight", "note")
         """
-        anotaciones_df = self.get_query_df(QUERY_ITEMS)
-
+        anotaciones_df = self.get_query_df(QUERY_ITEMS)\
+            .assign(
+                fragment=lambda x: x['StartContainerPath'].str.split('#').str[1],
+                point=lambda x: x['fragment'].str.extract(r'point\((.*?)\)')[0],
+                point_parts=lambda x: x['point'].str.split('/').apply(lambda lst: lst if lst else []),
+                third_point=lambda x: x['point_parts'].apply(lambda parts: parts[3] if parts else None),
+                last_point=lambda x: x['point_parts'].apply(lambda parts: parts[-1] if parts else None),
+        )\
+            [['Autor', 'Título', 'Capítulo', 'Progreso del libro',
+                'Texto', 'Anotación', 'Tipo', 'Fecha de creación']]
+        
         return anotaciones_df
 
     def close(self):
