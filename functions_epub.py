@@ -77,7 +77,6 @@ class EpubProcessor:
         """
         return self.metadata
 
-
 # Función para calcular el número de páginas (ajústala según el método que estés utilizando)
 def calculate_pages_kobo_style(epub_content):
     # Aquí deberías integrar la lógica que calcula las páginas de estilo Kobo a partir del contenido EPUB
