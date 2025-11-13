@@ -1,5 +1,6 @@
 import sqlite3
 import pandas as pd
+import time 
 
 class SQLiteWrapper:
     def __init__(self, db_path):
@@ -142,14 +143,42 @@ class SQLiteWrapper:
             .assign(
                 fragment=lambda x: x['StartContainerPath'].str.split('#').str[1],
                 point=lambda x: x['fragment'].str.extract(r'point\((.*?)\)')[0],
-                point_parts=lambda x: x['point'].str.split('/').apply(lambda lst: lst if lst else []),
+                point_parts=lambda x: x['point'].str.split('/').apply(lambda lst: lst if lst else [])
+            )\
+            .loc[lambda x: x.point.notna()]\
+            .assign(
                 third_point=lambda x: x['point_parts'].apply(lambda parts: parts[3] if parts else None),
                 last_point=lambda x: x['point_parts'].apply(lambda parts: parts[-1] if parts else None),
-        )\
-            [['Autor', 'Título', 'Capítulo', 'Progreso del libro',
-                'Texto', 'Anotación', 'Tipo', 'Fecha de creación']]
+            )\
+        .sort_values(["Título", "Autor", "Progreso del libro", "last_point"])\
+        [['Autor', 'Título', 'Capítulo', 'Progreso del libro',
+            'Texto', 'Anotación', 'Tipo', 'Fecha de creación']]
         
+    	# El filtro de point.notna() es para quedarnos solo con las notas de los epubs, ya que las de los kepubs son distintas
+        # Si se quiere guardar las de los kepubs habría que hacer un tratamiento aparte
+
         return anotaciones_df
+
+    def get_books(self):
+        QUERY_BOOKS = """
+            SELECT Title, Attribution, Description, ___SyncTime, DateCreated, DateLastRead, 
+            NumShortcovers, ReadStatus, ___PercentRead, Language, ReadStateSynced, TimeSpentReading 
+            FROM content
+            WHERE ContentType = "6" AND EpubType = -1 AND ContentID LIKE 'file%'
+        """
+
+        libros_df = self.get_query_df(QUERY_BOOKS)\
+            .assign(estado = lambda x: x.ReadStatus.map({0: "Sin empezar", 1: "En progreso", 2: "Leído"}))\
+            .assign(tiempo_lectura = lambda x: x.TimeSpentReading.apply(lambda y: time.strftime('%H:%M:%S', time.gmtime(y))))\
+            .rename(columns = {'Language': 'idioma', 'Title': 'titulo', 'Attribution': 'autor',
+                            'DateLastRead': 'fecha_ultima_lectura'})\
+            [['autor', 'titulo', 'idioma', 'estado', 'tiempo_lectura', 'fecha_ultima_lectura']]\
+            .assign(idioma = lambda x: x.idioma.str.extract("(es|en)").fillna("en"))\
+            .assign(idioma = lambda x: x.idioma.map({"es": "Español", "en": "Inglés"}))
+        
+        libros_df = libros_df\
+            .loc[lambda x: x.estado != "Sin Comenzar"]
+        return libros_df
 
     def close(self):
         """Cierra la conexión con la base de datos."""

@@ -4,7 +4,7 @@ import dropbox
 import json
 import os
 import pandas as pd
-from functions_epub_pruebas import EpubProcessor_pruebas
+from functions_epub import EpubProcessor
 
 def authenticate(APP_KEY, APP_SECRET, TOKEN_FILE):
     """Autentica al usuario la primera vez y guarda el token."""
@@ -97,7 +97,7 @@ def get_epub_metadata_from_dropbox(APP_KEY, APP_SECRET, TOKEN_FILE,
         response = dbx.files_list_folder(path=folder_path)
 
         for entry in response.entries:
-            if entry.name.endswith('.epub'):
+            if entry.name.endswith('.epub') and not('Ele' in entry.name) and not('Nosotros Ordoño' in entry.name):
                 try:
                     # print(f"Procesando archivo: {entry.name}")
 
@@ -106,7 +106,7 @@ def get_epub_metadata_from_dropbox(APP_KEY, APP_SECRET, TOKEN_FILE,
                     epub_content = res.content  # Asegúrate de obtener los bytes del contenido
 
                     # Usar la clase EpubProcessor para procesar el archivo directamente desde la memoria
-                    processor = EpubProcessor_pruebas(epub_content=epub_content)
+                    processor = EpubProcessor(epub_content=epub_content)
                     processor.process()
 
                     # Obtener los metadatos del archivo EPUB
