@@ -203,15 +203,7 @@ def get_book_ids_batch(book_titles, notion, NOTION_BOOKS_DATABASE_ID):
     
     return cache
 
-def create_annotations(df, notion, NOTION_ANNOTATIONS_DATABASE_ID, NOTION_BOOKS_DATABASE_ID, delete_existing=False):
-    if delete_existing:
-        print("🗑️ Eliminando anotaciones existentes...")
-        existing_annotations = notion.databases.query(
-            **{"database_id": NOTION_ANNOTATIONS_DATABASE_ID}
-        )["results"]
-        for page in existing_annotations:
-            notion.pages.update(**{"page_id": page["id"], "archived": True})
-
+def create_annotations(df, notion, NOTION_ANNOTATIONS_DATABASE_ID, NOTION_BOOKS_DATABASE_ID):
     # Obtener fecha de la última anotación para procesar solo nuevas
     last_date_in_notion = get_last_annotation_date_notion(notion, NOTION_ANNOTATIONS_DATABASE_ID)
     
@@ -300,7 +292,7 @@ def clear_book_content(notion, book_id):
     except Exception as e:
         print(f"⚠️ Error limpiando contenido: {e}")
 
-def create_book_pages(df, notion, NOTION_BOOKS_DATABASE_ID, clear_content=False):
+def create_book_pages(df, notion, NOTION_BOOKS_DATABASE_ID):
     # Agrupar por el título del libro
     grouped = df.groupby('Título', sort=False)
     
@@ -323,8 +315,8 @@ def create_book_pages(df, notion, NOTION_BOOKS_DATABASE_ID, clear_content=False)
         current_hash = create_content_hash(group)
         existing_hash = get_existing_content_hash(notion, book_id)
         
-        # Solo procesar si el contenido ha cambiado o se fuerza la limpieza
-        if current_hash == existing_hash and not clear_content:
+        # Solo procesar si el contenido ha cambiado
+        if current_hash == existing_hash:
             print(f"⏩ Saltando '{título}' - sin cambios en anotaciones")
             pages_skipped += 1
             continue
