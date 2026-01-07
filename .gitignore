@@ -7,7 +7,7 @@
 dropbox_token.json
 
 # Data files
-data/*.sqlite*
+# data/*.sqlite*
 data/*.pkl
 data/*.xlsx
 data/koreader_sync/

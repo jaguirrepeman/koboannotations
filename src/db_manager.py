@@ -116,7 +116,7 @@ class SQLiteWrapper:
             SELECT 
                 l.Author as Autor,
                 l.Title as Título, 
-                c.Title as Capítulo, 
+                COALESCE(c.Title, l.Title) as Capítulo, 
                 b.ChapterProgress as `Progreso del libro`, 
                 b.StartContainerPath,
                 b.Text as Texto, 
@@ -131,7 +131,7 @@ class SQLiteWrapper:
                 END as Tipo,
                 b.DateCreated as `Fecha de creación`
             FROM Bookmark b 
-            INNER JOIN content c ON b.ContentID = c.ContentID 
+            LEFT JOIN content c ON b.ContentID = c.ContentID 
             INNER JOIN (
                 SELECT DISTINCT b.VolumeID, c.Title, c.Attribution as Author
                 FROM Bookmark b 
@@ -139,7 +139,8 @@ class SQLiteWrapper:
             ) l ON b.VolumeID = l.VolumeID
             WHERE b.Type IN ("highlight", "note")
         """
-        anotaciones_df = self.get_query_df(QUERY_ITEMS)\
+        anotaciones_df = self.get_query_df(QUERY_ITEMS)
+        anotaciones_df = anotaciones_df\
             .assign(
                 fragment=lambda x: x['StartContainerPath'].str.split('#').str[1],
                 point=lambda x: x['fragment'].str.extract(r'point\((.*?)\)')[0],

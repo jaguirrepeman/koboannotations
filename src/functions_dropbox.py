@@ -4,7 +4,7 @@ import dropbox
 import json
 import os
 import pandas as pd
-from functions_epub import EpubProcessor
+from src.functions_epub import EpubProcessor
 from src.config import APP_KEY, APP_SECRET, TOKEN_FILE
 
 def authenticate(APP_KEY, APP_SECRET, TOKEN_FILE):
@@ -155,12 +155,12 @@ def manage_epub_metadata(libros_ereader_df, cache_path="data/epub_metadata.pkl",
     Solo descarga metadatos de libros nuevos que no estén en la caché.
     
     Args:
-        libros_ereader_df: DataFrame con los libros del E-Reader
+        libros_ereader_df: DataFrame con los libros del E-Reader (columnas: 'titulo', 'autor')
         cache_path: Ruta al archivo de caché
         folder_path: Ruta a la carpeta de Dropbox
         
     Returns:
-        DataFrame con los metadatos de todos los libros
+        DataFrame con los metadatos de todos los libros (columnas: 'title', 'author', etc.)
     """
     print("\n🔄 Obteniendo metadatos de Dropbox...")
     
@@ -173,10 +173,12 @@ def manage_epub_metadata(libros_ereader_df, cache_path="data/epub_metadata.pkl",
         epub_metadata = pd.DataFrame()
 
     # Identificar libros nuevos que no están en la caché
-    if not epub_metadata.empty:
-        libros_en_cache = epub_metadata['titulo'].unique()
+    if not epub_metadata.empty and 'title' in epub_metadata.columns:
+        # Los metadatos de Dropbox usan 'title', los del E-Reader usan 'titulo'
+        libros_en_cache = set(epub_metadata['title'].dropna().unique())
         libros_nuevos_df = libros_ereader_df[~libros_ereader_df['titulo'].isin(libros_en_cache)]
     else:
+        # Si la caché está vacía o no tiene la columna correcta, procesar todos
         libros_nuevos_df = libros_ereader_df
 
     # Si hay libros nuevos, obtener sus metadatos y actualizar la caché
